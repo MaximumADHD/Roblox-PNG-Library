@@ -83,12 +83,11 @@ function BinaryReader:ReadString(length)
 		length = self:ReadByte()
 	end
 	
-	local result = ""
+	local pos = self.Position
+	local nextPos = math.min(self.Length, pos + length)
 	
-	for i = 1, length do
-		local value = self:ReadByte()
-		result = result .. string.char(value)
-	end
+	local result = self.Buffer:sub(pos, nextPos - 1)
+	self.Position = nextPos
 	
 	return result
 end
