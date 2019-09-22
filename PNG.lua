@@ -15,7 +15,7 @@ local Unfilter = require(script:WaitForChild("Unfilter"))
 local LibDeflate = require(script:WaitForChild("LibDeflate"))
 local BinaryReader = require(script:WaitForChild("BinaryReader"))
 
-function getBytesPerPixel(colorType)
+local function getBytesPerPixel(colorType)
 	if colorType == 0 or colorType == 3 then
 		return 1
 	elseif colorType == 4 then
@@ -29,12 +29,19 @@ function getBytesPerPixel(colorType)
 	end
 end
 
+local function clampInt(value, min, max)
+	local num = tonumber(value) or 0
+	num = math.floor(num + .5)
+	
+	return math.clamp(num, min, max)
+end
+
 local function indexBitmap(file, x, y)
 	local width = file.Width
 	local height = file.Height
 	
-	local x = math.clamp(tonumber(x) or 0, 1, width) 
-	local y = math.clamp(tonumber(y) or 0, 1, height)
+	local x = clampInt(x, 1, width) 
+	local y = clampInt(y, 1, height)
 	
 	local bitmap = file.Bitmap
 	local bpp = file.BytesPerPixel
@@ -112,7 +119,7 @@ function PNG.new(buffer)
 	local header = reader:ReadString(8)
 	
 	if header ~= "\137PNG\r\n\n" then
-		error("Input data is not a PNG file.", 2)
+		error("PNG - Input data is not a PNG file.", 2)
 	end
 	
 	-- Read the file chunks.
@@ -143,8 +150,6 @@ function PNG.new(buffer)
 		if handler then
 			handler = require(handler)
 			handler(file, chunk)
-		else
-			warn(chunkType, "chunk was unhandled")
 		end
 		
 		table.insert(file.Chunks, chunk)
