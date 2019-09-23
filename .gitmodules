@@ -1,0 +1,3 @@
+[submodule "LibDeflate"]
+	path = Modules/LibDeflate
+	url = https://github.com/SafeteeWoW/LibDeflate
