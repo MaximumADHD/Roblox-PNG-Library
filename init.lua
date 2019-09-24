@@ -118,7 +118,7 @@ function PNG.new(buffer)
 	-- Verify the file header.
 	local header = reader:ReadString(8)
 	
-	if header ~= "\137PNG\r\n\n" then
+	if header ~= "\137PNG\r\n\26\n" then
 		error("PNG - Input data is not a PNG file.", 2)
 	end
 	

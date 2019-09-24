@@ -1,9 +1,9 @@
 {
 	"name": "PNG",
 	
-	"tree": 
+	"tree":
 	{
-		"$path": "PNG.lua",
+		"$path": "init.lua",
 		
 		"Chunks":
 		{

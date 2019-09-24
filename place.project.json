@@ -11,7 +11,7 @@
 			
 			"PNG":
 			{
-				"$path": "PNG.lua",
+				"$path": "init.lua",
 				
 				"Chunks":
 				{
