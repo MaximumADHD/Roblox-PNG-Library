@@ -23,9 +23,9 @@
 					"$path": "Modules/BinaryReader.lua"
 				},
 				
-				"LibDeflate":
+				"Deflate":
 				{
-					"$path": "Modules/LibDeflate/LibDeflate.lua"
+					"$path": "Modules/Deflate.lua"
 				},
 				
 				"Unfilter":

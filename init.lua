@@ -11,8 +11,8 @@
 local PNG = {}
 PNG.__index = PNG
 
+local Deflate = require(script:WaitForChild("Deflate"))
 local Unfilter = require(script:WaitForChild("Unfilter"))
-local LibDeflate = require(script:WaitForChild("LibDeflate"))
 local BinaryReader = require(script:WaitForChild("BinaryReader"))
 
 local function getBytesPerPixel(colorType)
@@ -156,14 +156,29 @@ function PNG.new(buffer)
 	end
 	
 	-- Decompress the zlib stream.
-	local compressed = file.ZlibStream
-	local response, status = LibDeflate:DecompressZlib(compressed)
+	local success, response = pcall(function ()
+		local result = {}
+		local index = 0
+		
+		Deflate:Inflate_zlib
+		{
+			Input = file.ZlibStream;
+			
+			Output = function (byte)
+				index = index + 1
+				result[index] = string.char(byte)
+			end
+		}
+		
+		return table.concat(result)
+	end)
 	
-	if not response then
-		error("PNG - Unable to unpack PNG data. Error Code: " .. tostring(status), 2)
+	if not success then
+		error("PNG - Unable to unpack PNG data. " .. tostring(response), 2)
 	end
 	
-	-- Load some info about the data.
+	-- Grab expected info from the file.
+	
 	local width = file.Width
 	local height = file.Height
 	
@@ -193,19 +208,19 @@ function PNG.new(buffer)
 		
 		if filterType == 0 then
 			-- None
-			Unfilter:None    (scanline, bitmap, bpp, row)
+			Unfilter:None(scanline, bitmap, bpp, row)
 		elseif filterType == 1 then
 			-- Sub
-			Unfilter:Sub     (scanline, bitmap, bpp, row)
+			Unfilter:Sub(scanline, bitmap, bpp, row)
 		elseif filterType == 2 then
 			-- Up
-			Unfilter:Up      (scanline, bitmap, bpp, row)
+			Unfilter:Up(scanline, bitmap, bpp, row)
 		elseif filterType == 3 then
 			-- Average
-			Unfilter:Average (scanline, bitmap, bpp, row)
+			Unfilter:Average(scanline, bitmap, bpp, row)
 		elseif filterType == 4 then
 			-- Paeth
-			Unfilter:Paeth   (scanline, bitmap, bpp, row)
+			Unfilter:Paeth(scanline, bitmap, bpp, row)
 		end
 	end
 	
