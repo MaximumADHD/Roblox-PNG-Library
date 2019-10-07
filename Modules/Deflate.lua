@@ -28,6 +28,7 @@ http://search.cpan.org/~nwclark/Compress-Zlib-Perl/Perl.pm
 LICENSE
 
 (c) 2008-2011 David Manura.  Licensed under the same terms as Lua (MIT).
+    Heavily modified by Max G. (2019)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,16 +50,7 @@ THE SOFTWARE.
 (end license)
 --]]
 
-local Deflate = 
-{
-	_TYPE = 'module', 
-	_NAME = 'compress.deflatelua', 
-	_VERSION = '0.3.20111128'
-}
-
-local math_max = math.max
-local table_sort = table.sort
-local string_char = string.char
+local Deflate = {}
 
 local band = bit32.band
 local lshift = bit32.lshift
@@ -67,48 +59,75 @@ local rshift = bit32.rshift
 local BTYPE_NO_COMPRESSION = 0
 local BTYPE_FIXED_HUFFMAN = 1
 local BTYPE_DYNAMIC_HUFFMAN = 2
-local BTYPE_RESERVED_ = 3
 
-local codelen_vals = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15}
+local lens = -- Size base for length codes 257..285
+{
+	[0] = 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
+	35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258
+}
 
-local function make_outstate(outbs)
-	local outstate = 
+local lext = -- Extra bits for length codes 257..285
+{
+	[0] = 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+	3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
+}
+
+local dists = -- Offset base for distance codes 0..29
+{
+	[0] = 1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
+	257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
+	8193, 12289, 16385, 24577
+}
+
+local dext = -- Extra bits for distance codes 0..29
+{
+	[0] = 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
+	7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
+	12, 12, 13, 13
+}
+
+local order = -- Permutation of code length codes
+{
+	16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 
+	11, 4, 12, 3, 13, 2, 14, 1, 15
+}
+
+-- Fixed literal table for BTYPE_FIXED_HUFFMAN
+local fixedLit = {0, 8, 144, 9, 256, 7, 280, 8, 288}
+
+ -- Fixed distance table for BTYPE_FIXED_HUFFMAN
+local fixedDist = {0, 5, 32}
+
+local function createState(bitStream)
+	local state = 
 	{
-		outbs = outbs;
-		window = {};
-		window_pos = 1;
+		Output = bitStream;
+		Window = {};
+		Pos = 1;
 	}
 	
-	return outstate
+	return state
 end
 
-local function output(outstate, byte)
-	local window_pos = outstate.window_pos
-	outstate.outbs(byte)
-	outstate.window[window_pos] = byte
-	outstate.window_pos = window_pos % 32768 + 1  -- 32K
+local function write(state, byte)
+	local pos = state.Pos
+	state.Output(byte)
+	state.Window[pos] = byte
+	state.Pos = pos % 32768 + 1  -- 32K
 end
 
-local function noeof(val)
-	return assert(val, 'unexpected end of file')
-end
-
-local function hasbit(bits, bit)
-	return bits % (bit + bit) >= bit
-end
-
-local function memoize(f)
-	local mt = {}
-	local t = setmetatable({}, mt)
+local function memoize(fn)
+	local meta = {}
+	local memoizer = setmetatable({}, meta)
 	
-	function mt:__index(k)
-		local v = f(k)
-		t[k] = v
+	function meta:__index(k)
+		local v = fn(k)
+		memoizer[k] = v
 		
 		return v
 	end
 	
-	return t
+	return memoizer
 end
 
 -- small optimization (lookup table for powers of 2)
@@ -117,194 +136,147 @@ local pow2 = memoize(function (n)
 end)
 
 -- weak metatable marking objects as bitstream type
-local is_bitstream = setmetatable({}, { __mode = 'k' })
+local isBitStream = setmetatable({}, { __mode = 'k' })
 
-local function bytestream_from_string(s)
-	local i = 1
-	local o = {}
+local function createBitStream(reader)
+	local buffer = 0
+	local bitsLeft = 0
 	
-	function o:read()
-		local by
-		
-		if i <= #s then
-			by = s:byte(i)
-			i = i + 1
-		end
-		
-		return by
+	local stream = {}
+	isBitStream[stream] = true
+	
+	function stream:GetBitsLeft()
+		return bitsLeft
 	end
 	
-	return o
-end
-
-local function bytestream_from_function(f)
-	local i = 0
-	local buffer = ''
-	local o = {}
-	
-	function o:read()
-		i = i + 1
+	function stream:Read(count)
+		count = count or 1
 		
-		if i > #buffer then
-			buffer = f()
-			
-			if not buffer then 
-				return
-			end
-			
-			i = 1
-		end
-		
-		return buffer:byte(i, i)
-	end
-	
-	return o
-end
-
-local function bitstream_from_bytestream(bys)
-	local buf_byte = 0
-	local buf_nbit = 0
-	
-	local o = {}
-	is_bitstream[o] = true
-	
-	function o:nbits_left_in_byte()
-		return buf_nbit
-	end
-	
-	function o:read(nbits)
-		nbits = nbits or 1
-		
-		while buf_nbit < nbits do
-			local byte = bys:read()
+		while bitsLeft < count do
+			local byte = reader:ReadByte()
 			
 			if not byte then 
 				return 
 			end
 			
-			buf_byte = buf_byte + lshift(byte, buf_nbit)
-			buf_nbit = buf_nbit + 8
+			buffer = buffer + lshift(byte, bitsLeft)
+			bitsLeft = bitsLeft + 8
 		end
 		
 		local bits
 		
-		if nbits == 0 then
+		if count == 0 then
 			bits = 0
-		elseif nbits == 32 then
-			bits = buf_byte
-			buf_byte = 0
+		elseif count == 32 then
+			bits = buffer
+			buffer = 0
 		else
-			bits = band(buf_byte, rshift(0xffffffff, 32 - nbits))
-			buf_byte = rshift(buf_byte, nbits)
+			bits = band(buffer, rshift(2^32 - 1, 32 - count))
+			buffer = rshift(buffer, count)
 		end
 		
-		buf_nbit = buf_nbit - nbits
+		bitsLeft = bitsLeft - count
 		return bits
 	end
 	
-	return o
+	return stream
 end
 
-
-local function get_bitstream(o)
-	if is_bitstream[o] then
-		return o
+local function getBitStream(obj)
+	if isBitStream[obj] then
+		return obj
 	end
 	
-	local byteStream
-	
-	if type(o) == "string" then
-		byteStream = bytestream_from_string(o)
-	elseif type(o) == "function" then
-		byteStream = bytestream_from_function(o)
-	end
-	
-	return bitstream_from_bytestream(byteStream)
+	return createBitStream(obj)
 end
 
-local function HuffmanTable(init, isFull)
-	local t = {}
+local function sortHuffman(a, b)
+	return a.NumBits == b.NumBits and a.Value < b.Value or a.NumBits < b.NumBits
+end
+
+local function msb(bits, numBits)
+	local res = 0
+		
+	for i = 1, numBits do
+		res = lshift(res, 1) + band(bits, 1)
+		bits = rshift(bits, 1)
+	end
+		
+	return res
+end
+
+local function createHuffmanTable(init, isFull)
+	local hTable = {}
 	
 	if isFull then
-		for val, nbits in pairs(init) do
-			if nbits ~= 0 then
-				t[#t + 1] = 
+		for val, numBits in pairs(init) do
+			if numBits ~= 0 then
+				hTable[#hTable + 1] = 
 				{
-					val = val;
-					nbits = nbits;
+					Value = val;
+					NumBits = numBits;
 				}
 			end
 		end
 	else
 		for i = 1, #init - 2, 2 do
 			local firstVal = init[i]
-			local nbits = init[i + 1]
+			
+			local numBits = init[i + 1]
 			local nextVal = init[i + 2]
 			
-			if nbits ~= 0 then
+			if numBits ~= 0 then
 				for val = firstVal, nextVal - 1 do
-					t[#t + 1] = 
+					hTable[#hTable + 1] = 
 					{
-						val = val;
-						nbits = nbits;
+						Value = val;
+						NumBits = numBits;
 					}
 				end
 			end
 		end
 	end
 	
-	table_sort(t, function(a, b)
-		return a.nbits == b.nbits and a.val < b.val or a.nbits < b.nbits
-	end)
+	table.sort(hTable, sortHuffman)
 	
 	local code = 1
-	local nbits = 0
+	local numBits = 0
 	
-	for i, s in ipairs(t) do
-		if s.nbits ~= nbits then
-			code = code * pow2[s.nbits - nbits]
-			nbits = s.nbits
+	for i, slide in ipairs(hTable) do
+		if slide.NumBits ~= numBits then
+			code = code * pow2[slide.NumBits - numBits]
+			numBits = slide.NumBits
 		end
 		
-		s.code = code
+		slide.Code = code
 		code = code + 1
 	end
 	
-	local minbits = math.huge
+	local minBits = math.huge
 	local look = {}
 	
-	for i, s in ipairs(t) do
-		minbits = math.min(minbits, s.nbits)
-		look[s.code] = s.val
-	end
-	
-	local function msb(bits, nbits)
-		local res = 0
-		
-		for i=1,nbits do
-			res = lshift(res, 1) + band(bits, 1)
-			bits = rshift(bits, 1)
-		end
-		
-		return res
+	for i, slide in ipairs(hTable) do
+		minBits = math.min(minBits, slide.NumBits)
+		look[slide.Code] = slide.Value
 	end
 
-	local tFirstCode = memoize(function (bits) 
-		return pow2[minbits] + msb(bits, minbits) 
+	local firstCode = memoize(function (bits) 
+		return pow2[minBits] + msb(bits, minBits) 
 	end)
-
-	function t:read(bs)
+	
+	function hTable:Read(bitStream)
 		local code = 1 -- leading 1 marker
-		local nbits = 0
+		local numBits = 0
 		
 		while true do
-			if nbits == 0 then  -- small optimization (optional)
-				code = tFirstCode[noeof(bs:read(minbits))]
-				nbits = nbits + minbits
+			if numBits == 0 then  -- small optimization (optional)
+				local index = bitStream:Read(minBits)
+				numBits = numBits + minBits
+				code = firstCode[index]
 			else
-				local b = noeof(bs:read())
-				nbits = nbits + 1
-				code = code * 2 + b   -- MSB first
+				local bit = bitStream:Read()
+				numBits = numBits + 1
+				code = code * 2 + bit -- MSB first
 			end
 			
 			local val = look[code]
@@ -315,24 +287,24 @@ local function HuffmanTable(init, isFull)
 		end
 	end
 	
-	return t
+	return hTable
 end
 
-local function parse_zlib_header(bs)
+local function parseZlibHeader(bitStream)
 	-- Compression Method
-	local cm = bs:read(4)
+	local cm = bitStream:Read(4)
 	
 	-- Compression info
-	local cinfo = bs:read(4)  
+	local cinfo = bitStream:Read(4)  
 	
 	-- FLaGs: FCHECK (check bits for CMF and FLG)   
-	local fcheck = bs:read(5)
+	local fcheck = bitStream:Read(5)
 	
 	-- FLaGs: FDICT (present dictionary)
-	local fdict = bs:read(1)
+	local fdict = bitStream:Read(1)
 	
 	-- FLaGs: FLEVEL (compression level)
-	local flevel = bs:read(2)
+	local flevel = bitStream:Read(2)
 	
 	-- CMF (Compresion Method and flags)
 	local cmf = cinfo * 16  + cm
@@ -348,9 +320,9 @@ local function parse_zlib_header(bs)
 		error("invalid zlib window size: cinfo=" .. cinfo)
 	end
 	
-	local window_size = 2^(cinfo + 8)
+	local windowSize = 2 ^ (cinfo + 8)
 	
-	if (cmf*256 + flg) %  31 ~= 0 then
+	if (cmf * 256 + flg) % 31 ~= 0 then
 		error("invalid zlib header (bad fcheck sum)")
 	end
 	
@@ -358,214 +330,147 @@ local function parse_zlib_header(bs)
 		error("FIX:TODO - FDICT not currently implemented")
 	end
 	
-	return window_size
+	return windowSize
 end
 
-local function parse_huffmantables(bs)
-	local hlit = bs:read(5)  -- # of literal/length codes - 257
-	local hdist = bs:read(5) -- # of distance codes - 1
-	local hclen = noeof(bs:read(4)) -- # of code length codes - 4
-
-	local ncodelen_codes = hclen + 4
-	local codelen_init = {}
+local function parseHuffmanTables(bitStream)
+	local numLits  = bitStream:Read(5) -- # of literal/length codes - 257
+	local numDists = bitStream:Read(5) -- # of distance codes - 1
+	local numCodes = bitStream:Read(4) -- # of code length codes - 4
 	
-	for i = 1, ncodelen_codes do
-		local nbits = bs:read(3)
-		local val = codelen_vals[i]
-		codelen_init[val] = nbits
+	local codeLens = {}
+	
+	for i = 1, numCodes + 4 do
+		local index = order[i]
+		codeLens[index] = bitStream:Read(3)
 	end
 	
-	local codeLenTable = HuffmanTable(codelen_init, true)
+	codeLens = createHuffmanTable(codeLens, true)
 
-	local function decode(ncodes)
+	local function decode(numCodes)
 		local init = {}
-		local nbits
+		local numBits
 		local val = 0
 		
-		while val < ncodes do
-			local codelen = codeLenTable:read(bs)
-			local nrepeat
+		while val < numCodes do
+			local codeLen = codeLens:Read(bitStream)
+			local numRepeats
 			
-			if codelen <= 15 then
-				nrepeat = 1
-				nbits = codelen
-			elseif codelen == 16 then
-				nrepeat = 3 + noeof(bs:read(2))
-			elseif codelen == 17 then
-				nrepeat = 3 + noeof(bs:read(3))
-				nbits = 0
-			elseif codelen == 18 then
-				nrepeat = 11 + noeof(bs:read(7))
-				nbits = 0
+			if codeLen <= 15 then
+				numRepeats = 1
+				numBits = codeLen
+			elseif codeLen == 16 then
+				numRepeats = 3 + bitStream:Read(2)
+			elseif codeLen == 17 then
+				numRepeats = 3 + bitStream:Read(3)
+				numBits = 0
+			elseif codeLen == 18 then
+				numRepeats = 11 + bitStream:Read(7)
+				numBits = 0
 			end
 			
-			for i = 1, nrepeat do
-				init[val] = nbits
+			for i = 1, numRepeats do
+				init[val] = numBits
 				val = val + 1
 			end
 		end
 		
-		return HuffmanTable(init, true)
+		return createHuffmanTable(init, true)
 	end
 
-	local nlit_codes = hlit + 257
-	local ndist_codes = hdist + 1
+	local numLitCodes = numLits + 257
+	local numDistCodes = numDists + 1
 	
-	local litTable = decode(nlit_codes)
-	local distTable = decode(ndist_codes)
+	local litTable = decode(numLitCodes)
+	local distTable = decode(numDistCodes)
 	
 	return litTable, distTable
 end
 
-local tdecode_len_base
-local tdecode_len_nextrabits
-local tdecode_dist_base
-local tdecode_dist_nextrabits
-
-local function parse_compressed_item(bs, outstate, littable, disttable)
-	local val = littable:read(bs)
+local function parseCompressedItem(bitStream, state, litTable, distTable)
+	local val = litTable:Read(bitStream)
 	
 	if val < 256 then -- literal
-		output(outstate, val)
+		write(state, val)
 	elseif val == 256 then -- end of block
 		return true
 	else
-		if not tdecode_len_base then
-			local t = { [257] = 3 }
-			local skip = 1
-			
-			for i = 258, 285, 4 do
-				for j = i, i + 3 do 
-					t[j] = t[j - 1] + skip 
-				end
-				
-				if i ~= 258 then 
-					skip = skip * 2 
-				end
-			end
-			
-			t[285] = 258
-			tdecode_len_base = t
-		end
+		local lenBase = lens[val - 257]
+		local numExtraBits = lext[val - 257]
 		
-		if not tdecode_len_nextrabits then
-			local t = {}
+		local extraBits = bitStream:Read(numExtraBits)
+		local len = lenBase + extraBits
 		
-			for i = 257, 285 do
-				local j = math_max(i - 261, 0)
-				t[i] = rshift(j, 2)
-			end
-	
-			t[285] = 0
-			tdecode_len_nextrabits = t
-		end
+		local distVal = distTable:Read(bitStream)
+		local distBase = dists[distVal]
 		
-		local len_base = tdecode_len_base[val]
-		local nextrabits = tdecode_len_nextrabits[val]
-		local extrabits = bs:read(nextrabits)
-		local len = len_base + extrabits
-	
-		if not tdecode_dist_base then
-			local t = {[0] = 1}
-			local skip = 1
-			
-			for i = 1, 29, 2 do
-				for j = i, i + 1 do 
-					t[j] = t[j - 1] + skip 
-				end
-				
-				if i ~= 1 then 
-					skip = skip * 2 
-				end
-			end
-			
-			tdecode_dist_base = t
-		end
+		local distNumExtraBits = dext[distVal]
+		local distExtraBits = bitStream:Read(distNumExtraBits)
 		
-		if not tdecode_dist_nextrabits then
-			local t = {}
-	
-			for i = 0, 29 do
-				local j = math_max(i - 2, 0)
-				t[i] = rshift(j, 1)
-			end
-	
-			tdecode_dist_nextrabits = t
-		end
-		
-		local dist_val = disttable:read(bs)
-		local dist_base = tdecode_dist_base[dist_val]
-		
-		local dist_nextrabits = tdecode_dist_nextrabits[dist_val]
-		local dist_extrabits = bs:read(dist_nextrabits)
-		
-		local dist = dist_base + dist_extrabits
+		local dist = distBase + distExtraBits
 		
 		for i = 1, len do
-			local pos = (outstate.window_pos - 1 - dist) % 32768 + 1  -- 32K
-			output(outstate, assert(outstate.window[pos], 'invalid distance'))
+			local pos = (state.Pos - 1 - dist) % 32768 + 1
+			local byte = assert(state.Window[pos], "invalid distance")
+			write(state, byte)
 		end
 	end
 	
 	return false
 end
 
-
-local function parse_block(bs, outstate)
-	local bfinal = bs:read(1)
-	local btype = bs:read(2)
+local function parseBlock(bitStream, state)
+	local bFinal = bitStream:Read(1)
+	local bType = bitStream:Read(2)
 	
-	if btype == BTYPE_NO_COMPRESSION then
-		local left = bs:nbits_left_in_byte()
-		bs:read(left)
+	if bType == BTYPE_NO_COMPRESSION then
+		local left = bitStream:GetBitsLeft()
+		bitStream:Read(left)
 		
-		local len = bs:read(16)
-		local nlen_ = noeof(bs:read(16))
+		local len = bitStream:Read(16)
+		local nlen = bitStream:Read(16)
 
 		for i = 1, len do
-			local by = noeof(bs:read(8))
-			output(outstate, by)
+			local byte = bitStream:Read(8)
+			write(state, byte)
 		end
-	elseif btype == BTYPE_FIXED_HUFFMAN or btype == BTYPE_DYNAMIC_HUFFMAN then
-		local littable, disttable
+	elseif bType == BTYPE_FIXED_HUFFMAN or bType == BTYPE_DYNAMIC_HUFFMAN then
+		local litTable, distTable
 
-		if btype == BTYPE_DYNAMIC_HUFFMAN then
-			littable, disttable = parse_huffmantables(bs)
+		if bType == BTYPE_DYNAMIC_HUFFMAN then
+			litTable, distTable = parseHuffmanTables(bitStream)
 		else
-			littable  = HuffmanTable {0, 8, 144, 9, 256, 7, 280, 8, 288, nil}
-			disttable = HuffmanTable {0, 5, 32, nil}
+			litTable = createHuffmanTable(fixedLit)
+			distTable = createHuffmanTable(fixedDist)
 		end
 		
-		repeat until parse_compressed_item(bs, outstate, littable, disttable)
+		repeat until parseCompressedItem(bitStream, state, litTable, distTable)
 	else
 		error("unrecognized compression type")
 	end
 
-	return bfinal ~= 0
+	return bFinal ~= 0
 end
 
-
-function Deflate:Inflate(t)
-	local bs = get_bitstream(t.Input)
-	local outbs = t.Output
+function Deflate:Inflate(io)
+	local state = createState(io.Output)
+	local bitStream = getBitStream(io.Input)
 	
-	local outstate = make_outstate(outbs)
-	repeat until parse_block(bs, outstate)
+	repeat until parseBlock(bitStream, state)
 end
 
-function Deflate:Inflate_zlib(t)
-	local bs = get_bitstream(t.Input)
-	local outbs = t.Output
+function Deflate:InflateZlib(io)
+	local bitStream = getBitStream(io.Input)
+	local windowSize = parseZlibHeader(bitStream)
 	
-	local window_size_ = parse_zlib_header(bs)
-
 	self:Inflate
 	{
-		Input = bs;
-		Output = outbs;
+		Input = bitStream;
+		Output = io.Output;
 	}
 	
-	bs:read(bs:nbits_left_in_byte())
+	local bitsLeft = bitStream:GetBitsLeft()
+	bitStream:Read(bitsLeft)
 end
 
 return Deflate

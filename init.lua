@@ -160,9 +160,9 @@ function PNG.new(buffer)
 		local result = {}
 		local index = 0
 		
-		Deflate:Inflate_zlib
+		Deflate:InflateZlib
 		{
-			Input = file.ZlibStream;
+			Input = BinaryReader.new(file.ZlibStream);
 			
 			Output = function (byte)
 				index = index + 1
