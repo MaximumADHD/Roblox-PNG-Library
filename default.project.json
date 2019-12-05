@@ -1,28 +1,38 @@
 {
-	"name": "PNG",
+	"name": "Roblox-PNG-Library",
 	
-	"tree":
+	"tree": 
 	{
-		"$path": "init.lua",
+		"$className": "DataModel",
 		
-		"Chunks":
+		"ReplicatedStorage":
 		{
-			"$path": "Chunks"
-		},
-		
-		"BinaryReader":
-		{
-			"$path": "Modules/BinaryReader.lua"
-		},
-		
-		"Deflate":
-		{
-			"$path": "Modules/Deflate.lua"
-		},
-		
-		"Unfilter":
-		{
-			"$path": "Modules/Unfilter.lua"
+			"$className": "ReplicatedStorage",
+			
+			"PNG":
+			{
+				"$path": "init.lua",
+				
+				"Chunks":
+				{
+					"$path": "Chunks"
+				},
+				
+				"BinaryReader":
+				{
+					"$path": "Modules/BinaryReader.lua"
+				},
+				
+				"Deflate":
+				{
+					"$path": "Modules/Deflate.lua"
+				},
+				
+				"Unfilter":
+				{
+					"$path": "Modules/Unfilter.lua"
+				}
+			}
 		}
 	}
 }

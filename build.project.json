@@ -1,0 +1,28 @@
+{
+	"name": "PNG",
+	
+	"tree":
+	{
+		"$path": "init.lua",
+		
+		"Chunks":
+		{
+			"$path": "Chunks"
+		},
+		
+		"BinaryReader":
+		{
+			"$path": "Modules/BinaryReader.lua"
+		},
+		
+		"Deflate":
+		{
+			"$path": "Modules/Deflate.lua"
+		},
+		
+		"Unfilter":
+		{
+			"$path": "Modules/Unfilter.lua"
+		}
+	}
+}
