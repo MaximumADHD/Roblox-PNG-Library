@@ -11,9 +11,12 @@
 local PNG = {}
 PNG.__index = PNG
 
-local Deflate = require(script:WaitForChild("Deflate"))
-local Unfilter = require(script:WaitForChild("Unfilter"))
-local BinaryReader = require(script:WaitForChild("BinaryReader"))
+local chunks = script.Chunks
+local modules = script.Modules
+
+local Deflate = require(modules.Deflate)
+local Unfilter = require(modules.Unfilter)
+local BinaryReader = require(modules.BinaryReader)
 
 local function getBytesPerPixel(colorType)
 	if colorType == 0 or colorType == 3 then
@@ -122,9 +125,6 @@ function PNG.new(buffer)
 		error("PNG - Input data is not a PNG file.", 2)
 	end
 	
-	-- Read the file chunks.
-	local chunks = script:WaitForChild("Chunks")
-
 	while file.Reading do
 		local length = reader:ReadInt32()
 		local chunkType = reader:ReadString(4)

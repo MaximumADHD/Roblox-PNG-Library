@@ -17,20 +17,10 @@
 				{
 					"$path": "Chunks"
 				},
-				
-				"BinaryReader":
+
+				"Modules":
 				{
-					"$path": "Modules/BinaryReader.lua"
-				},
-				
-				"Deflate":
-				{
-					"$path": "Modules/Deflate.lua"
-				},
-				
-				"Unfilter":
-				{
-					"$path": "Modules/Unfilter.lua"
+					"$path": "Modules"
 				}
 			}
 		}
