@@ -22,7 +22,7 @@ export type BinaryReaderProto = {
 
 export type BinaryReader = typeof(setmetatable({} :: BinaryReaderProto, {} :: BinaryReaderImpl))
 
-----------------
+---------------------------------------------------------------------------------------------
 
 export type TimeStamp = {
 	Year: number;
@@ -79,7 +79,7 @@ export type File = {
 	RenderIntent: number?
 }
 
--------------------------------------------
+---------------------------------------------------------------------------------------------
 
 export type PNGImpl = {
 	__index: PNGImpl,
