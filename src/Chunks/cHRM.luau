@@ -5,7 +5,7 @@ local Types = require(modules.Types)
 local colors = { "White", "Red", "Green", "Blue" }
 
 local function cHRM(file: Types.File, chunk: Types.Chunk)
-	local chrome = {}
+	local chrome: { [Types.ChromaticityColor]: { number } } = {}
 	local data = chunk.Data
 	
 	for i = 1, 4 do

@@ -5,7 +5,7 @@ local Types = require(modules.Types)
 local function tIME(file: Types.File, chunk: Types.Chunk)
 	local data = chunk.Data
 	
-	local timeStamp = 
+	local timeStamp: Types.TimeStamp = 
 	{
 		Year  = data:ReadUInt16();
 		Month = data:ReadByte();
