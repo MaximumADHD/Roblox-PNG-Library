@@ -17,8 +17,9 @@ local Unfilter = require(modules.Unfilter)
 local BinaryReader = require(modules.BinaryReader)
 
 local schar = string.char
-local mmax, mfloor, mclamp = math.max, math.floor, math.clamp
+local tconcat, tinsert = table.concat, table.insert
 local c3FromHSV, c3FromRGB = Color3.fromHSV, Color3.fromRGB
+local mmax, mfloor, mclamp = math.max, math.floor, math.clamp
 
 local CachedChunkHandler: { [string]: (file: Types.File, chunk: Types.Chunk) -> () } = {}
 
@@ -164,7 +165,7 @@ function PNG.new(buffer): typeof(setmetatable({} :: Types.File, PNG))
 			handler(file, chunk)
 		end
 		
-		table.insert(file.Chunks, chunk)
+		tinsert(file.Chunks, chunk)
 	end
 	
 	-- Decompress the zlib stream.
@@ -182,7 +183,7 @@ function PNG.new(buffer): typeof(setmetatable({} :: Types.File, PNG))
 			end
 		}
 		
-		return table.concat(result)
+		return tconcat(result)
 	end)
 	
 	if not success then

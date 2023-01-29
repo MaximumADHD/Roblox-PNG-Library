@@ -57,6 +57,7 @@ local lshift = bit32.lshift
 local rshift = bit32.rshift
 
 local mhuge, mmin = math.huge, math.min
+local tsort = table.sort
 
 local BTYPE_NO_COMPRESSION = 0
 local BTYPE_FIXED_HUFFMAN = 1
@@ -239,7 +240,7 @@ local function createHuffmanTable(init, isFull)
 		end
 	end
 	
-	table.sort(hTable, sortHuffman)
+	tsort(hTable, sortHuffman)
 	
 	local code = 1
 	local numBits = 0
