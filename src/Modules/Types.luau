@@ -1,17 +1,17 @@
 export type BinaryReaderImpl = {
 	__index: BinaryReaderImpl,
 	new: (buffer: string) -> BinaryReader,
-	ReadByte: (BinaryReader) -> number?,
-	ReadBytes: (BinaryReader, count: number) -> { number },
-	ReadAllBytes: (BinaryReader) -> { number },
-	IterateBytes: (BinaryReader) -> () -> number?,
-	TwosComplementOf: (BinaryReader, value: number, numBits: number) -> number,
-	ReadUInt16: (BinaryReader) -> number,
-	ReadInt16: (BinaryReader) -> number,
-	ReadUInt32: (BinaryReader) -> number,
-	ReadInt32: (BinaryReader) -> number,
-	ReadString: (BinaryReader, length: number) -> string,
-	ForkReader: (BinaryReader, length: number) -> BinaryReader
+	ReadByte: (self: BinaryReader) -> number?,
+	ReadBytes: (self: BinaryReader, count: number) -> { number },
+	ReadAllBytes: (self: BinaryReader) -> { number },
+	IterateBytes: (self: BinaryReader) -> () -> number?,
+	TwosComplementOf: (self: BinaryReader, value: number, numBits: number) -> number,
+	ReadUInt16: (self: BinaryReader) -> number,
+	ReadInt16: (self: BinaryReader) -> number,
+	ReadUInt32: (self: BinaryReader) -> number,
+	ReadInt32: (self: BinaryReader) -> number,
+	ReadString: (self: BinaryReader, length: number) -> string,
+	ForkReader: (self: BinaryReader, length: number) -> BinaryReader
 }
 
 export type BinaryReaderProto = {
@@ -78,5 +78,15 @@ export type File = {
 	}?;
 	RenderIntent: number?
 }
+
+-------------------------------------------
+
+export type PNGImpl = {
+	__index: PNGImpl,
+	new: (buffer: string) -> PNG,
+	GetPixel: (self: PNG, x: number, y: number) -> (Color3, number)
+}
+
+export type PNG = typeof(setmetatable({} :: File, {} :: PNGImpl))
 
 return {}

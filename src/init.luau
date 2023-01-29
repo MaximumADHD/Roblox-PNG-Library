@@ -27,7 +27,7 @@ for _, chunkHandler in ipairs(chunks:GetChildren()) do
 	CachedChunkHandler[chunkHandler.Name] = require(chunkHandler)
 end
 
-local PNG = {}
+local PNG: Types.PNGImpl = {} :: Types.PNGImpl
 PNG.__index = PNG
 
 local function getBytesPerPixel(colorType: number): number
@@ -118,7 +118,7 @@ function PNG:GetPixel(x: number, y: number): (Color3, number)
 	return color, alpha
 end
 
-function PNG.new(buffer): typeof(setmetatable({} :: Types.File, PNG))
+function PNG.new(buffer: string): Types.PNG
 	-- Create the reader.
 	local reader = BinaryReader.new(buffer)
 	
