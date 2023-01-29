@@ -1,0 +1,8 @@
+[package]
+name = "MaximumADHD/Roblox-PNG-Library"
+version = "1.0.0"
+author = "MaximumADHD"
+content_root = "src"
+license = "MIT"
+
+[dependencies]

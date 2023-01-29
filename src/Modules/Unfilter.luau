@@ -1,12 +1,15 @@
 local Unfilter = {}
 
-function Unfilter:None(scanline, pixels, bpp, row)
+local band, rshift = bit32.band, bit32.rshift
+local mabs = math.abs
+
+function Unfilter.None(scanline: { number }, pixels: { { number } }, _, row: number)
 	for i = 1, #scanline do
 		pixels[row][i] = scanline[i]
 	end
 end
 
-function Unfilter:Sub(scanline, pixels, bpp, row)
+function Unfilter.Sub(scanline: { number }, pixels: { { number } }, bpp: number, row: number)
 	for i = 1, bpp do
 		pixels[row][i] = scanline[i]
 	end
@@ -14,32 +17,32 @@ function Unfilter:Sub(scanline, pixels, bpp, row)
 	for i = bpp + 1, #scanline do
 		local x = scanline[i]
 		local a = pixels[row][i - bpp]
-		pixels[row][i] = bit32.band(x + a, 0xFF)
+		pixels[row][i] = band(x + a, 0xFF)
 	end
 end
 
-function Unfilter:Up(scanline, pixels, bpp, row)
+function Unfilter.Up(scanline: { number }, pixels: { { number } }, bpp: number, row: number)
 	if row > 1 then
 		local upperRow = pixels[row - 1]
 		
 		for i = 1, #scanline do
 			local x = scanline[i]
 			local b = upperRow[i]
-			pixels[row][i] = bit32.band(x + b, 0xFF)
+			pixels[row][i] = band(x + b, 0xFF)
 		end
 	else
-		self:None(scanline, pixels, bpp, row)
+		Unfilter.None(scanline, pixels, bpp, row)
 	end
 end
 
-function Unfilter:Average(scanline, pixels, bpp, row)
+function Unfilter.Average(scanline: { number }, pixels: { { number } }, bpp: number, row: number)
 	if row > 1 then
 		for i = 1, bpp do
 			local x = scanline[i]
 			local b = pixels[row - 1][i]
 			
-			b = bit32.rshift(b, 1)
-			pixels[row][i] = bit32.band(x + b, 0xFF)
+			b = rshift(b, 1)
+			pixels[row][i] = band(x + b, 0xFF)
 		end
 		
 		for i = bpp + 1, #scanline do
@@ -47,9 +50,9 @@ function Unfilter:Average(scanline, pixels, bpp, row)
 			local b = pixels[row - 1][i]
 			
 			local a = pixels[row][i - bpp]
-			local ab = bit32.rshift(a + b, 1)
+			local ab = rshift(a + b, 1)
 			
-			pixels[row][i] = bit32.band(x + ab, 0xFF)
+			pixels[row][i] = band(x + ab, 0xFF)
 		end
 	else
 		for i = 1, bpp do
@@ -60,20 +63,20 @@ function Unfilter:Average(scanline, pixels, bpp, row)
 			local x = scanline[i]
 			local b = pixels[row - 1][i]
 			
-			b = bit32.rshift(b, 1)
-			pixels[row][i] = bit32.band(x + b, 0xFF)
+			b = rshift(b, 1)
+			pixels[row][i] = band(x + b, 0xFF)
 		end
 	end
 end
 
-function Unfilter:Paeth(scanline, pixels, bpp, row)
+function Unfilter.Paeth(scanline: { number }, pixels: { { number } }, bpp: number, row: number)
 	if row > 1 then
 		local pr
 		
 		for i = 1, bpp do
 			local x = scanline[i]
 			local b = pixels[row - 1][i]
-			pixels[row][i] = bit32.band(x + b, 0xFF)
+			pixels[row][i] = band(x + b, 0xFF)
 		end
 		
 		for i = bpp + 1, #scanline do
@@ -84,9 +87,9 @@ function Unfilter:Paeth(scanline, pixels, bpp, row)
 			local x = scanline[i]
 			local p = a + b - c
 			
-			local pa = math.abs(p - a)
-			local pb = math.abs(p - b)
-			local pc = math.abs(p - c)
+			local pa = mabs(p - a)
+			local pb = mabs(p - b)
+			local pc = mabs(p - c)
 			
 			if pa <= pb and pa <= pc then
 				pr = a
@@ -96,10 +99,10 @@ function Unfilter:Paeth(scanline, pixels, bpp, row)
 				pr = c
 			end
 			
-			pixels[row][i] = bit32.band(x + pr, 0xFF)
+			pixels[row][i] = band(x + pr, 0xFF)
 		end
 	else
-		self:Sub(scanline, pixels, bpp, row)
+		Unfilter.Sub(scanline, pixels, bpp, row)
 	end
 end
 

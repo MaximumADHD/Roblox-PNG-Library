@@ -1,4 +1,8 @@
-local function tIME(file, chunk)
+local modules = script.Parent.Parent.Modules
+
+local Types = require(modules.Types)
+
+local function tIME(file: Types.File, chunk: Types.Chunk)
 	local data = chunk.Data
 	
 	local timeStamp = 

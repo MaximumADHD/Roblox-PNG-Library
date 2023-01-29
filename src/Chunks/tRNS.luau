@@ -1,4 +1,10 @@
-local function tRNS(file, chunk)
+local modules = script.Parent.Parent.Modules
+
+local Types = require(modules.Types)
+
+local c3FromRGB = Color3.fromRGB
+
+local function tRNS(file: Types.File, chunk: Types.Chunk)
 	local data = chunk.Data
 	
 	local bitDepth = file.BitDepth
@@ -29,7 +35,7 @@ local function tRNS(file, chunk)
 		local r = data:ReadUInt16() / bitDepth
 		local g = data:ReadUInt16() / bitDepth
 		local b = data:ReadUInt16() / bitDepth
-		file.Alpha = Color3.new(r, g, b)
+		file.Alpha = c3FromRGB(r, g, b)
 	else
 		error("PNG - Invalid tRNS chunk")
 	end	

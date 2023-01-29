@@ -1,6 +1,10 @@
-local colors = {"White", "Red", "Green", "Blue"}
+local modules = script.Parent.Parent.Modules
 
-local function cHRM(file, chunk)
+local Types = require(modules.Types)
+
+local colors = { "White", "Red", "Green", "Blue" }
+
+local function cHRM(file: Types.File, chunk: Types.Chunk)
 	local chrome = {}
 	local data = chunk.Data
 	

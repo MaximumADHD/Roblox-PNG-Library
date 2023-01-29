@@ -56,6 +56,8 @@ local band = bit32.band
 local lshift = bit32.lshift
 local rshift = bit32.rshift
 
+local mhuge, mmin = math.huge, math.min
+
 local BTYPE_NO_COMPRESSION = 0
 local BTYPE_FIXED_HUFFMAN = 1
 local BTYPE_DYNAMIC_HUFFMAN = 2
@@ -252,11 +254,11 @@ local function createHuffmanTable(init, isFull)
 		code = code + 1
 	end
 	
-	local minBits = math.huge
+	local minBits = mhuge
 	local look = {}
 	
 	for i, slide in ipairs(hTable) do
-		minBits = math.min(minBits, slide.NumBits)
+		minBits = mmin(minBits, slide.NumBits)
 		look[slide.Code] = slide.Value
 	end
 

@@ -1,9 +1,15 @@
-local function tEXt(file, chunk)
+local modules = script.Parent.Parent.Modules
+
+local Types = require(modules.Types)
+
+local sChar = string.char
+
+local function tEXt(file: Types.File, chunk: Types.Chunk)
 	local data = chunk.Data
 	local key, value = "", ""
 	
 	for byte in data:IterateBytes() do
-		local char = string.char(byte)
+		local char = sChar(byte)
 		
 		if char == '\0' then
 			key = value

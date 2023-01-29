@@ -8,17 +8,28 @@
 --
 ---------------------------------------------------------------------------------------------
 
-local PNG = {}
-PNG.__index = PNG
-
 local chunks = script.Chunks
 local modules = script.Modules
 
+local Types = require(modules.Types)
 local Deflate = require(modules.Deflate)
 local Unfilter = require(modules.Unfilter)
 local BinaryReader = require(modules.BinaryReader)
 
-local function getBytesPerPixel(colorType)
+local schar = string.char
+local mmax, mfloor, mclamp = math.max, math.floor, math.clamp
+local c3FromHSV, c3FromRGB = Color3.fromHSV, Color3.fromRGB
+
+local CachedChunkHandler: { [string]: (file: Types.File, chunk: Types.Chunk) -> () } = {}
+
+for _, chunkHandler in ipairs(chunks:GetChildren()) do
+	CachedChunkHandler[chunkHandler.Name] = require(chunkHandler)
+end
+
+local PNG = {}
+PNG.__index = PNG
+
+local function getBytesPerPixel(colorType: number): number
 	if colorType == 0 or colorType == 3 then
 		return 1
 	elseif colorType == 4 then
@@ -32,22 +43,22 @@ local function getBytesPerPixel(colorType)
 	end
 end
 
-local function clampInt(value, min, max)
+local function clampInt(value: number, min: number, max: number): number
 	local num = tonumber(value) or 0
-	num = math.floor(num + .5)
+	num = mfloor(num + .5)
 	
-	return math.clamp(num, min, max)
+	return mclamp(num, min, max)
 end
 
-local function indexBitmap(file, x, y)
-	local width = file.Width
-	local height = file.Height
+local function indexBitmap(file: Types.File, x: number, y: number)
+	local width = file.Width or 0
+	local height = file.Height or 0
 	
 	local x = clampInt(x, 1, width) 
 	local y = clampInt(y, 1, height)
 	
 	local bitmap = file.Bitmap
-	local bpp = file.BytesPerPixel
+	local bpp = file.BytesPerPixel or 1
 	
 	local i0 = ((x - 1) * bpp) + 1
 	local i1 = i0 + bpp
@@ -55,18 +66,20 @@ local function indexBitmap(file, x, y)
 	return bitmap[y], i0, i1
 end
 
-function PNG:GetPixel(x, y)
+function PNG:GetPixel(x: number, y: number): (Color3, number)
 	local row, i0, i1 = indexBitmap(self, x, y)
-	local colorType = self.ColorType
+	local colorType = self.ColorType or -1
 	
-	local color, alpha do
+	local color, alpha
+	
+	do
 		if colorType == 0 then
 			local gray = unpack(row, i0, i1)
-			color = Color3.fromHSV(0, 0, gray)
+			color = c3FromHSV(0, 0, gray)
 			alpha = 255
 		elseif colorType == 2 then
 			local r, g, b = unpack(row, i0, i1)
-			color = Color3.fromRGB(r, g, b)
+			color = c3FromRGB(r, g, b)
 			alpha = 255
 		elseif colorType == 3 then
 			local palette = self.Palette
@@ -84,11 +97,11 @@ function PNG:GetPixel(x, y)
 			end
 		elseif colorType == 4 then
 			local gray, a = unpack(row, i0, i1)
-			color = Color3.fromHSV(0, 0, gray)
+			color = c3FromHSV(0, 0, gray)
 			alpha = a
 		elseif colorType == 6 then
 			local r, g, b, a = unpack(row, i0, i1)
-			color = Color3.fromRGB(r, g, b, a)
+			color = c3FromRGB(r, g, b, a)
 			alpha = a
 		end
 	end
@@ -104,12 +117,12 @@ function PNG:GetPixel(x, y)
 	return color, alpha
 end
 
-function PNG.new(buffer)
+function PNG.new(buffer): typeof(setmetatable({} :: Types.File, PNG))
 	-- Create the reader.
 	local reader = BinaryReader.new(buffer)
 	
 	-- Create the file object.
-	local file =
+	local file: Types.File =
 	{
 		Chunks = {};
 		Metadata = {};
@@ -136,7 +149,7 @@ function PNG.new(buffer)
 			crc = reader:ReadUInt32()
 		end
 		
-		local chunk = 
+		local chunk: Types.Chunk = 
 		{
 			Length = length;
 			Type = chunkType;
@@ -145,10 +158,9 @@ function PNG.new(buffer)
 			CRC = crc;
 		}
 		
-		local handler = chunks:FindFirstChild(chunkType)
+		local handler = CachedChunkHandler[chunkType]
 		
 		if handler then
-			handler = require(handler)
 			handler(file, chunk)
 		end
 		
@@ -156,17 +168,17 @@ function PNG.new(buffer)
 	end
 	
 	-- Decompress the zlib stream.
-	local success, response = pcall(function ()
+	local success, response = pcall(function()
 		local result = {}
 		local index = 0
 		
 		Deflate:InflateZlib
 		{
-			Input = BinaryReader.new(file.ZlibStream);
+			Input = BinaryReader.new(file.ZlibStream or "");
 			
 			Output = function (byte)
 				index = index + 1
-				result[index] = string.char(byte)
+				result[index] = schar(byte)
 			end
 		}
 		
@@ -176,6 +188,8 @@ function PNG.new(buffer)
 	if not success then
 		error("PNG - Unable to unpack PNG data. " .. tostring(response), 2)
 	end
+
+	file.ZlibStream = nil
 	
 	-- Grab expected info from the file.
 	
@@ -186,41 +200,39 @@ function PNG.new(buffer)
 	local colorType = file.ColorType
 	
 	local buffer = BinaryReader.new(response)
-	file.ZlibStream = nil
 	
-	local bitmap = {}
-	file.Bitmap = bitmap
+	local bitmap = file.Bitmap
 	
 	local channels = getBytesPerPixel(colorType)
 	file.NumChannels = channels
 	
-	local bpp = math.max(1, channels * (bitDepth / 8))
+	local bpp = mmax(1, channels * (bitDepth / 8))
 	file.BytesPerPixel = bpp
 	
 	-- Unfilter the buffer and 
 	-- load it into the bitmap.
 	
-	for row = 1, height do	
+	for row = 1, height do
 		local filterType = buffer:ReadByte()
-		local scanline = buffer:ReadBytes(width * bpp, true)
+		local scanline = buffer:ReadBytes(width * bpp)
 		
 		bitmap[row] = {}
 		
 		if filterType == 0 then
 			-- None
-			Unfilter:None(scanline, bitmap, bpp, row)
+			Unfilter.None(scanline, bitmap, bpp, row)
 		elseif filterType == 1 then
 			-- Sub
-			Unfilter:Sub(scanline, bitmap, bpp, row)
+			Unfilter.Sub(scanline, bitmap, bpp, row)
 		elseif filterType == 2 then
 			-- Up
-			Unfilter:Up(scanline, bitmap, bpp, row)
+			Unfilter.Up(scanline, bitmap, bpp, row)
 		elseif filterType == 3 then
 			-- Average
-			Unfilter:Average(scanline, bitmap, bpp, row)
+			Unfilter.Average(scanline, bitmap, bpp, row)
 		elseif filterType == 4 then
 			-- Paeth
-			Unfilter:Paeth(scanline, bitmap, bpp, row)
+			Unfilter.Paeth(scanline, bitmap, bpp, row)
 		end
 	end
 	
