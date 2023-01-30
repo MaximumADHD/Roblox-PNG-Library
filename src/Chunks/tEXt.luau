@@ -10,18 +10,18 @@ local function tEXt(file: Types.File, chunk: Types.Chunk, state: Types.ChunkRead
 
 	local data = chunk.Data
 	local key, value = "", ""
-	
+
 	for byte in data:IterateBytes() do
 		local char = sChar(byte)
-		
-		if char == '\0' then
+
+		if char == "\0" then
 			key = value
 			value = ""
 		else
 			value = value .. char
 		end
 	end
-	
+
 	file.Metadata[key] = value
 end
 

@@ -11,12 +11,12 @@ local function bKGD(file: Types.File, chunk: Types.Chunk, state: Types.ChunkRead
 	assert(not tfind(state.FoundChunkType, "bKGD"), "There can only be one bKGD chunk in a PNG file")
 
 	local data = chunk.Data
-	
+
 	local bitDepth = file.BitDepth
 	local colorType = file.ColorType
-	
+
 	bitDepth = (2 ^ bitDepth) - 1
-	
+
 	if colorType == 3 then
 		local index = data:ReadByte()
 		file.BackgroundColor = file.Palette and file.Palette[index] or c3new()

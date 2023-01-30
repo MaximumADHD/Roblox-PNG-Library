@@ -13,17 +13,16 @@ local function cHRM(file: Types.File, chunk: Types.Chunk, state: Types.ChunkRead
 
 	local chrome: { [Types.ChromaticityColor]: { number } } = {}
 	local data = chunk.Data
-	
+
 	for i = 1, 4 do
 		local color = colors[i]
-		
-		chrome[color] =
-		{
-			[1] = data:ReadUInt32() / 10e4;
-			[2] = data:ReadUInt32() / 10e4;
+
+		chrome[color] = {
+			[1] = data:ReadUInt32() / 10e4,
+			[2] = data:ReadUInt32() / 10e4,
 		}
 	end
-	
+
 	file.Chromaticity = chrome
 end
 

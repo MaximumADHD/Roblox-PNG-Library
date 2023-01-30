@@ -9,18 +9,18 @@ BinaryReader.__index = BinaryReader
 
 function BinaryReader.new(buffer: string): Types.BinaryReader
 	local self = setmetatable({}, BinaryReader)
-	
+
 	self.Position = 1
 	self.Buffer = buffer
 	self.Length = #buffer
-	
+
 	return self
 end
 
 function BinaryReader:ReadByte(): number?
 	local buffer = self.Buffer
 	local pos = self.Position
-	
+
 	if pos <= self.Length then
 		local result = buffer:sub(pos, pos)
 		self.Position = pos + 1
@@ -33,11 +33,34 @@ end
 
 function BinaryReader:ReadBytes(count: number): { number }
 	local values = {}
-	
+
 	for i = 1, count do
 		values[i] = self:ReadByte() :: number
 	end
-	
+
+	return values
+end
+
+function BinaryReader:PeekByte(): number?
+	local buffer = self.Buffer
+	local pos = self.Position
+
+	if pos <= self.Length then
+		local result = buffer:sub(pos, pos)
+
+		return result:byte()
+	end
+
+	return nil
+end
+
+function BinaryReader:PeekBytes(count: number): { number }
+	local values = {}
+
+	for i = 1, count do
+		values[i] = self:ReadByte() :: number
+	end
+
 	return values
 end
 
@@ -46,7 +69,7 @@ function BinaryReader:ReadAllBytes(): { number }
 end
 
 function BinaryReader:IterateBytes(): () -> number?
-	return function ()
+	return function()
 		return self:ReadByte()
 	end
 end
@@ -55,7 +78,7 @@ function BinaryReader:TwosComplementOf(value: number, numBits: number): number
 	if value >= (2 ^ (numBits - 1)) then
 		value = value - (2 ^ numBits)
 	end
-	
+
 	return value
 end
 
@@ -72,7 +95,7 @@ end
 function BinaryReader:ReadUInt32(): number
 	local upper = self:ReadUInt16()
 	local lower = self:ReadUInt16()
-	
+
 	return (upper * 65536) + lower
 end
 
@@ -82,17 +105,17 @@ function BinaryReader:ReadInt32(): number
 end
 
 function BinaryReader:ReadString(length: number): string
-    if length == nil then
-        length = self:ReadByte() or 0
-    end
-    
-    local pos = self.Position
-    local nextPos = math.min(self.Length, pos + length)
-    
-    local result = self.Buffer:sub(pos, nextPos - 1)
-    self.Position = nextPos
-    
-    return result
+	if length == nil then
+		length = self:ReadByte() or 0
+	end
+
+	local pos = self.Position
+	local nextPos = math.min(self.Length, pos + length)
+
+	local result = self.Buffer:sub(pos, nextPos - 1)
+	self.Position = nextPos
+
+	return result
 end
 
 function BinaryReader:ForkReader(length: number): Types.BinaryReader
