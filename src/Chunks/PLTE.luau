@@ -2,9 +2,17 @@ local modules = script.Parent.Parent.Modules
 
 local Types = require(modules.Types)
 
+local tfind = table.find
 local c3FromRGB = Color3.fromRGB
 
-local function PLTE(file: Types.File, chunk: Types.Chunk)
+local function PLTE(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
+	assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(not tfind(state.FoundChunkType, "PLTE"), "There can only be one PLTE chunk in a PNG file")
+	assert(not tfind(state.FoundChunkType, "IDAT"), "PLTE chunk must be before IDAT chunks")
+	assert(not tfind(state.FoundChunkType, "bKGD"), "PLTE chunk must be before bKGD chunk")
+	assert(not tfind(state.FoundChunkType, "hIST"), "PLTE chunk must be before hIST chunk")
+	assert(not tfind(state.FoundChunkType, "tRNS"), "PLTE chunk must be before tRNS chunk")
+	
 	file.Palette = file.Palette or {}
 	
 	local data = chunk.Data

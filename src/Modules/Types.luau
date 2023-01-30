@@ -89,4 +89,11 @@ export type PNGImpl = {
 
 export type PNG = typeof(setmetatable({} :: File, {} :: PNGImpl))
 
+---------------------------------------------------------------------------------------------
+
+export type ChunkReaderState = {
+	PreviousChunk: Chunk?;
+	FoundChunkType: { string };
+}
+
 return {}

@@ -2,9 +2,14 @@ local modules = script.Parent.Parent.Modules
 
 local Types = require(modules.Types)
 
+local tfind = table.find
 local c3FromHSV, c3new = Color3.fromHSV, Color3.new
 
-local function bKGD(file: Types.File, chunk: Types.Chunk)
+local function bKGD(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
+	assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(not tfind(state.FoundChunkType, "IDAT"), "bKGD chunk must be before IDAT chunks")
+	assert(not tfind(state.FoundChunkType, "bKGD"), "There can only be one bKGD chunk in a PNG file")
+
 	local data = chunk.Data
 	
 	local bitDepth = file.BitDepth

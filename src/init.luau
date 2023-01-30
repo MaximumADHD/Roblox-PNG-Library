@@ -17,11 +17,11 @@ local Unfilter = require(modules.Unfilter)
 local BinaryReader = require(modules.BinaryReader)
 
 local schar = string.char
-local tconcat, tinsert = table.concat, table.insert
 local c3FromHSV, c3FromRGB = Color3.fromHSV, Color3.fromRGB
 local mmax, mfloor, mclamp = math.max, math.floor, math.clamp
+local tfind, tconcat, tinsert = table.find, table.concat, table.insert
 
-local CachedChunkHandler: { [string]: (file: Types.File, chunk: Types.Chunk) -> () } = {}
+local CachedChunkHandler: { [string]: (file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState) -> () } = {}
 
 for _, chunkHandler in ipairs(chunks:GetChildren()) do
 	CachedChunkHandler[chunkHandler.Name] = require(chunkHandler)
@@ -44,8 +44,10 @@ local function getBytesPerPixel(colorType: number): number
 	end
 end
 
-local function clampInt(value: number, min: number, max: number): number
-	local num = tonumber(value) or 0
+local function clampInt(value: any, min: number, max: number): number?
+	local num = tonumber(value)
+	if not num then return num end
+
 	num = mfloor(num + .5)
 	
 	return mclamp(num, min, max)
@@ -55,8 +57,8 @@ local function indexBitmap(file: Types.File, x: number, y: number)
 	local width = file.Width or 0
 	local height = file.Height or 0
 	
-	local x = clampInt(x, 1, width) 
-	local y = clampInt(y, 1, height)
+	local x = clampInt(x, 1, width) or 0
+	local y = clampInt(y, 1, height) or 0
 	
 	local bitmap = file.Bitmap
 	local bpp = file.BytesPerPixel or 1
@@ -139,6 +141,10 @@ function PNG.new(buffer: string): Types.PNG
 		error("PNG - Input data is not a PNG file.", 2)
 	end
 	
+	local chunkReaderState: Types.ChunkReaderState = {
+		FoundChunkType = {}
+	}
+
 	while file.Reading do
 		local length = reader:ReadInt32()
 		local chunkType = reader:ReadString(4)
@@ -162,10 +168,15 @@ function PNG.new(buffer: string): Types.PNG
 		local handler = CachedChunkHandler[chunkType]
 		
 		if handler then
-			handler(file, chunk)
+			handler(file, chunk, chunkReaderState)
 		end
 		
 		tinsert(file.Chunks, chunk)
+
+		chunkReaderState.PreviousChunk = chunk
+		if not tfind(chunkReaderState.FoundChunkType, chunkType) then
+			tinsert(chunkReaderState.FoundChunkType, chunkType)
+		end
 	end
 	
 	-- Decompress the zlib stream.

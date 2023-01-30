@@ -2,7 +2,12 @@ local modules = script.Parent.Parent.Modules
 
 local Types = require(modules.Types)
 
-local function tIME(file: Types.File, chunk: Types.Chunk)
+local tfind = table.find
+
+local function tIME(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
+	assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(not tfind(state.FoundChunkType, "tIME"), "There can only be one tIME chunk in a PNG file")
+
 	local data = chunk.Data
 	
 	local timeStamp: Types.TimeStamp = 
