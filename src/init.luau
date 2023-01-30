@@ -71,7 +71,7 @@ end
 
 function PNG:GetPixel(x: number, y: number): (Color3, number)
 	local row, i0, i1 = indexBitmap(self, x, y)
-	local colorType = self.ColorType or -1
+	local colorType = self.ColorType
 	
 	local color, alpha
 	
@@ -145,6 +145,8 @@ function PNG.new(buffer: string): Types.PNG
 		FoundChunkType = {}
 	}
 
+	-- Use parralel lua to read the chunks.
+	task.desynchronize()
 	while file.Reading do
 		local length = reader:ReadInt32()
 		local chunkType = reader:ReadString(4)
@@ -178,12 +180,15 @@ function PNG.new(buffer: string): Types.PNG
 			tinsert(chunkReaderState.FoundChunkType, chunkType)
 		end
 	end
+	task.synchronize()
 	
 	-- Decompress the zlib stream.
 	local success, response = pcall(function()
 		local result = {}
 		local index = 0
 		
+		-- Use parrarel lua to help with decompression.
+		task.desynchronize()
 		Deflate:InflateZlib
 		{
 			Input = BinaryReader.new(file.ZlibStream or "");
@@ -193,6 +198,7 @@ function PNG.new(buffer: string): Types.PNG
 				result[index] = schar(byte)
 			end
 		}
+		task.synchronize()
 		
 		return tconcat(result)
 	end)
@@ -225,6 +231,8 @@ function PNG.new(buffer: string): Types.PNG
 	-- Unfilter the buffer and 
 	-- load it into the bitmap.
 	
+	-- Use parralel lua to unfilter the buffer.
+	task.desynchronize()
 	for row = 1, height do
 		local filterType = buffer:ReadByte()
 		local scanline = buffer:ReadBytes(width * bpp)
@@ -248,6 +256,7 @@ function PNG.new(buffer: string): Types.PNG
 			Unfilter.Paeth(scanline, bitmap, bpp, row)
 		end
 	end
+	task.synchronize()
 	
 	return setmetatable(file, PNG)
 end
