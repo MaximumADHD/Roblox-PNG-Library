@@ -171,6 +171,8 @@ function PNG.new(buffer: string): Types.PNG
 		
 		if handler then
 			handler(file, chunk, chunkReaderState)
+		else
+			warn("Chunk handler for " .. chunkType .. " is not implemented yet.")
 		end
 		
 		tinsert(file.Chunks, chunk)

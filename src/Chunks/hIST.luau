@@ -10,6 +10,7 @@ local function hIST(_: Types.File, _: Types.Chunk, state: Types.ChunkReaderState
 	assert(not tfind(state.FoundChunkType, "hIST"), "There can only be one hIST chunk in a PNG file")
 
     -- TODO: Implement hIST
+	warn("Chunk type 'hIST' is not implemented yet")
 end
 
 return hIST
