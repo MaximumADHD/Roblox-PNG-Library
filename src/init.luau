@@ -16,7 +16,6 @@ local Inflate = require(modules.zzlib).inflate
 local Unfilter = require(modules.Unfilter)
 local BinaryReader = require(modules.BinaryReader)
 
-local tfind, tinsert = table.find, table.insert
 local c3FromHSV, c3FromRGB = Color3.fromHSV, Color3.fromRGB
 local mmax, mfloor, mclamp = math.max, math.floor, math.clamp
 
@@ -174,11 +173,11 @@ function PNG.new(buffer: string): Types.PNG
 			warn("Chunk handler for " .. chunkType .. " is not implemented yet.")
 		end
 
-		tinsert(file.Chunks, chunk)
+		table.insert(file.Chunks, chunk)
 
 		chunkReaderState.PreviousChunk = chunk
-		if not tfind(chunkReaderState.FoundChunkType, chunkType) then
-			tinsert(chunkReaderState.FoundChunkType, chunkType)
+		if not table.find(chunkReaderState.FoundChunkType, chunkType) then
+			table.insert(chunkReaderState.FoundChunkType, chunkType)
 		end
 	end
 	task.synchronize()

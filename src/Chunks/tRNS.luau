@@ -2,13 +2,12 @@ local modules = script.Parent.Parent.Modules
 
 local Types = require(modules.Types)
 
-local tfind = table.find
 local c3FromRGB = Color3.fromRGB
 
 local function tRNS(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
-	assert(tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
-	assert(not tfind(state.FoundChunkType, "IDAT"), "tRNS chunk must be before IDAT chunks")
-	assert(not tfind(state.FoundChunkType, "tRNS"), "There can only be one tRNS chunk in a PNG file")
+	assert(table.find(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(not table.find(state.FoundChunkType, "IDAT"), "tRNS chunk must be before IDAT chunks")
+	assert(not table.find(state.FoundChunkType, "tRNS"), "There can only be one tRNS chunk in a PNG file")
 
 	local data = chunk.Data
 

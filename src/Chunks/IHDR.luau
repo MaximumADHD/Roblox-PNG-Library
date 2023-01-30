@@ -2,11 +2,9 @@ local modules = script.Parent.Parent.Modules
 
 local Types = require(modules.Types)
 
-local tfind = table.find
-
 local function IHDR(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
 	assert(not state.PreviousChunk, "IHDR chunk must be the first chunk in the file")
-	assert(not tfind(state.FoundChunkType, "IHDR"), "There can only be one IHDR chunk in a PNG file")
+	assert(not table.find(state.FoundChunkType, "IHDR"), "There can only be one IHDR chunk in a PNG file")
 
 	local data = chunk.Data
 

@@ -4,11 +4,9 @@ local Types = require(modules.Types)
 
 -- This one is undocumented...
 
-local tfind = table.find
-
 local function sRGB(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
-	assert(tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
-	assert(not tfind(state.FoundChunkType, "sRGB"), "There can only be one sRGB chunk in a PNG file")
+	assert(table.find(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(not table.find(state.FoundChunkType, "sRGB"), "There can only be one sRGB chunk in a PNG file")
 
 	local data = chunk.Data
 	file.RenderIntent = data:ReadByte()
