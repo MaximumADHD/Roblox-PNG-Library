@@ -1,3 +1,5 @@
+--!strict
+
 export type BinaryReaderImpl = {
 	__index: BinaryReaderImpl,
 	new: (buffer: string) -> BinaryReader,

@@ -1,6 +1,6 @@
 [package]
 name = "MaximumADHD/Roblox-PNG-Library"
-description = "An implementation of the PNG file format in Lua, natively designed for Roblox. "
+description = "An implementation of the PNG file format in Luau, natively designed for Roblox."
 version = "1.0.0"
 license = "ISC"
 registry = "https://github.com/UpliftGames/wally-index"

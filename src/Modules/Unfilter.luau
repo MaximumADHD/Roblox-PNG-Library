@@ -1,3 +1,5 @@
+--!strict
+
 local Unfilter = {}
 
 local band, rshift = bit32.band, bit32.rshift

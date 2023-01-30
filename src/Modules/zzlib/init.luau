@@ -14,7 +14,7 @@ local schar = string.char
 
 local zzlib = {}
 
-local function arraytostr(array: { number })
+local function arraytostr(array: { number }): string
 	local tmp = {}
 	local size = #array
 	local pos = 1
@@ -45,7 +45,7 @@ local function arraytostr(array: { number })
 end
 
 -- compute Adler-32 checksum
-local function adler32(s: string)
+local function adler32(s: string): number
 	local s1 = 1
 	local s2 = 0
 	for i = 1, #s do
@@ -56,7 +56,7 @@ local function adler32(s: string)
 	return s2 * 65536 + s1
 end
 
-local function inflate_zlib(bs)
+local function inflate_zlib(bs): string
 	local cmf = bs.buf:byte(1)
 	local flg = bs.buf:byte(2)
 	if (cmf * 256 + flg) % 31 ~= 0 then
@@ -80,7 +80,7 @@ local function inflate_zlib(bs)
 	return result
 end
 
-function zzlib.inflate(str: string)
+function zzlib.inflate(str: string): string
 	return inflate_zlib(infl.bitstream_init(str))
 end
 
