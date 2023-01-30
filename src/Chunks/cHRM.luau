@@ -7,7 +7,7 @@ local tfind = table.find
 local colors = { "White", "Red", "Green", "Blue" }
 
 local function cHRM(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
-	assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
 	assert(not tfind(state.FoundChunkType, "IDAT"), "cHRM chunk must be before IDAT chunks")
 	assert(not tfind(state.FoundChunkType, "cHRM"), "There can only be one cHRM chunk in a PNG file")
 

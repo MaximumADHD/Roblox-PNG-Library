@@ -6,7 +6,7 @@ local tfind = table.find
 local c3FromRGB = Color3.fromRGB
 
 local function tRNS(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
-	assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
 	assert(not tfind(state.FoundChunkType, "IDAT"), "tRNS chunk must be before IDAT chunks")
 	assert(not tfind(state.FoundChunkType, "tRNS"), "There can only be one tRNS chunk in a PNG file")
 
@@ -36,13 +36,12 @@ local function tRNS(file: Types.File, chunk: Types.Chunk, state: Types.ChunkRead
 		local grayAlpha = data:ReadUInt16()
 		file.Alpha = grayAlpha / bitDepth
 	elseif colorType == 2 then
-		-- TODO: This seems incorrect...
 		local r = data:ReadUInt16() / bitDepth
 		local g = data:ReadUInt16() / bitDepth
 		local b = data:ReadUInt16() / bitDepth
 		file.Alpha = c3FromRGB(r, g, b)
 	else
-		error("PNG - Invalid tRNS chunk")
+		error("Invalid tRNS chunk")
 	end	
 end
 

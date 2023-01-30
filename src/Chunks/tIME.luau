@@ -5,7 +5,7 @@ local Types = require(modules.Types)
 local tfind = table.find
 
 local function tIME(file: Types.File, chunk: Types.Chunk, state: Types.ChunkReaderState)
-	assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+	assert(tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
 	assert(not tfind(state.FoundChunkType, "tIME"), "There can only be one tIME chunk in a PNG file")
 
 	local data = chunk.Data

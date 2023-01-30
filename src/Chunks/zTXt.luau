@@ -5,7 +5,7 @@ local Types = require(modules.Types)
 local tfind = table.find
 
 local function zTXt(_: Types.File, _: Types.Chunk, state: Types.ChunkReaderState)
-    assert(not tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
+    assert(tfind(state.FoundChunkType, "IHDR"), "Missing IHDR chunk")
 
     -- TODO: Implement zTXt
 end

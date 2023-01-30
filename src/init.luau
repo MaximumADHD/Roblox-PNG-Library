@@ -213,7 +213,8 @@ function PNG.new(buffer: string): Types.PNG
 	
 	local buffer = BinaryReader.new(response)
 	
-	local bitmap = file.Bitmap
+	local bitmap = {}
+	file.Bitmap = bitmap
 	
 	local channels = getBytesPerPixel(colorType)
 	file.NumChannels = channels
