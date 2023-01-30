@@ -4,6 +4,8 @@ local modules = script.Parent
 
 local Types = require(modules.Types)
 
+local mmin = math.min
+
 local BinaryReader: Types.BinaryReaderImpl = {} :: Types.BinaryReaderImpl
 BinaryReader.__index = BinaryReader
 
@@ -45,23 +47,13 @@ function BinaryReader:PeekByte(): number?
 	local buffer = self.Buffer
 	local pos = self.Position
 
-	if pos <= self.Length then
-		local result = buffer:sub(pos, pos)
-
-		return result:byte()
-	end
-
-	return nil
+	return buffer:sub(pos, pos):byte()
 end
 
 function BinaryReader:PeekBytes(count: number): { number }
-	local values = {}
+	local buffer = self.Buffer
 
-	for i = 1, count do
-		values[i] = self:ReadByte() :: number
-	end
-
-	return values
+	return { buffer:sub(self.Position, self.Position + count):byte() }
 end
 
 function BinaryReader:ReadAllBytes(): { number }
@@ -110,7 +102,7 @@ function BinaryReader:ReadString(length: number): string
 	end
 
 	local pos = self.Position
-	local nextPos = math.min(self.Length, pos + length)
+	local nextPos = mmin(self.Length, pos + length)
 
 	local result = self.Buffer:sub(pos, nextPos - 1)
 	self.Position = nextPos
