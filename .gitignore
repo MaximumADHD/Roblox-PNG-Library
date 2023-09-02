@@ -1,0 +1,22 @@
+# Test places and builds
+**/*.rbx[lm]*
+
+# LuaCov output location
+**/luacov.*
+
+# MkDocs build output
+/site/
+
+# Rotriever
+rotriever.lock
+Packages
+
+# Selene
+roblox.toml
+
+# Darklua
+**/darklua*
+
+# Analysis artifacts
+sourcemap.json
+globalTypes.d.lua
