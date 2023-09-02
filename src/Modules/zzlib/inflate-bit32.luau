@@ -1,3 +1,5 @@
+--!native
+
 -- zzlib-bit32 - zlib decompression in Lua - version using bit/bit32 libraries
 
 -- Copyright (c) 2016-2023 Francois Galea <fgalea at free.fr>

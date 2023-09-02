@@ -1,3 +1,5 @@
+--!native
+
 -- zzlib - zlib decompression in Lua - Implementation-independent code
 
 -- Copyright (c) 2016-2023 Francois Galea <fgalea at free.fr>

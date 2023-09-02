@@ -1,3 +1,5 @@
+--!native
+
 local modules = script.Parent.Parent.Modules
 
 local Types = require(modules.Types)
